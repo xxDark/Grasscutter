@@ -4,9 +4,8 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 
 import emu.grasscutter.Grasscutter;
-import emu.grasscutter.utils.Crypto;
-import emu.grasscutter.utils.Utils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.DefaultEventLoop;
 import kcp.highway.KcpListener;
@@ -50,6 +49,11 @@ public class GameSessionManager {
                 }
 
                 @Override
+                public void writeData(ByteBuf buf) {
+                    ukcp.write(buf);
+                }
+
+                @Override
                 public void close() {
                     ukcp.close();
                 }
@@ -64,17 +68,18 @@ public class GameSessionManager {
 
         @Override
         public void handleReceive(ByteBuf buf, Ukcp kcp) {
-            byte[] byteData = Utils.byteBufToArray(buf);
-            logicThread.execute(() -> {
-                try {
-                    GameSession conversation = sessions.get(kcp);
-                    if(conversation!=null) {
-                        conversation.handleReceive(byteData);
+            GameSession conversation = sessions.get(kcp);
+            if (conversation != null) {
+                ByteBuf copy = PooledByteBufAllocator.DEFAULT.heapBuffer(buf.readableBytes());
+                buf.getBytes(0, copy);
+                logicThread.execute(() -> {
+                    try {
+                        conversation.handleReceive(copy);
+                    } finally {
+                        copy.release();
                     }
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-            });
+                });
+            }
         }
 
         @Override
@@ -99,12 +104,13 @@ public class GameSessionManager {
     interface KcpTunnel{
         InetSocketAddress getAddress();
         void writeData(byte[] bytes);
+        void writeData(ByteBuf buf);
         void close();
         int getSrtt();
     }
     interface KcpChannel{
         void onConnected(KcpTunnel tunnel);
         void handleClose();
-        void handleReceive(byte[] bytes);
+        void handleReceive(ByteBuf bytes);
     }
 }

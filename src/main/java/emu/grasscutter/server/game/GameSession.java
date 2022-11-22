@@ -156,17 +156,17 @@ public class GameSession implements GameSessionManager.KcpChannel {
     }
 
     @Override
-    public void handleReceive(byte[] bytes) {
+    public void handleReceive(ByteBuf bytes) {
         // Decrypt and turn back into a packet
         Crypto.xor(bytes, useSecretKey() ? Crypto.ENCRYPT_KEY : Crypto.DISPATCH_KEY);
-        ByteBuf packet = Unpooled.wrappedBuffer(bytes);
+        ByteBuf packet = bytes;
 
         // Log
         //logPacket(packet);
         // Handle
         try {
             boolean allDebug = GAME_INFO.logPackets == ServerDebugMode.ALL;
-            while (packet.readableBytes() > 0) {
+            while (packet.isReadable()) {
                 // Length
                 if (packet.readableBytes() < 12) {
                     return;

@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.regex.Pattern;
 
 import emu.grasscutter.Grasscutter;
+import io.netty.buffer.ByteBuf;
 
 public final class Crypto {
     private static final SecureRandom secureRandom = new SecureRandom();
@@ -64,6 +65,16 @@ public final class Crypto {
         try {
             for (int i = 0; i < packet.length; i++) {
                 packet[i] ^= key[i % key.length];
+            }
+        } catch (Exception e) {
+            Grasscutter.getLogger().error("Crypto error.", e);
+        }
+    }
+
+    public static void xor(ByteBuf packet, byte[] key) {
+        try {
+            for (int i = 0, j = packet.readableBytes(); i < j; i++) {
+                packet.setByte(i, packet.getByte(i) ^ key[i % key.length]);
             }
         } catch (Exception e) {
             Grasscutter.getLogger().error("Crypto error.", e);

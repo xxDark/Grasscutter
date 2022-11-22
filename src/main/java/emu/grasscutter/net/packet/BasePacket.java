@@ -6,8 +6,11 @@ import java.io.IOException;
 import com.google.protobuf.GeneratedMessageV3;
 import emu.grasscutter.net.proto.PacketHeadOuterClass.PacketHead;
 import emu.grasscutter.utils.Crypto;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 
 public class BasePacket {
+    private static final byte[] EMPTY_BYTES = new byte[0];
     private static final int const1 = 17767; // 0x4567
     private static final int const2 = -30293; // 0x89ab
 
@@ -88,54 +91,24 @@ public class BasePacket {
         return this;
     }
 
-    public byte[] build() {
-        if (getHeader() == null) {
-            this.header = new byte[0];
+    public ByteBuf build() {
+        byte[] header = this.header;
+        if (header == null) {
+            this.header = header = EMPTY_BYTES;
         }
-
-        if (getData() == null) {
-            this.data = new byte[0];
+        byte[] data = this.data;
+        if (data == null) {
+            this.data = data = EMPTY_BYTES;
         }
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(2 + 2 + 2 + 4 + getHeader().length + getData().length + 2);
-
-        this.writeUint16(baos, const1);
-        this.writeUint16(baos, opcode);
-        this.writeUint16(baos, header.length);
-        this.writeUint32(baos, data.length);
-        this.writeBytes(baos, header);
-        this.writeBytes(baos, data);
-        this.writeUint16(baos, const2);
-
-        byte[] packet = baos.toByteArray();
-
-        if (this.shouldEncrypt) {
-            Crypto.xor(packet, this.useDispatchKey() ? Crypto.DISPATCH_KEY : Crypto.ENCRYPT_KEY);
-        }
-
-        return packet;
-    }
-
-    public void writeUint16(ByteArrayOutputStream baos, int i) {
-        // Unsigned short
-        baos.write((byte) ((i >>> 8) & 0xFF));
-        baos.write((byte) (i & 0xFF));
-    }
-
-    public void writeUint32(ByteArrayOutputStream baos, int i) {
-        // Unsigned int (long)
-        baos.write((byte) ((i >>> 24) & 0xFF));
-        baos.write((byte) ((i >>> 16) & 0xFF));
-        baos.write((byte) ((i >>> 8) & 0xFF));
-        baos.write((byte) (i & 0xFF));
-    }
-
-    public void writeBytes(ByteArrayOutputStream baos, byte[] bytes) {
-        try {
-            baos.write(bytes);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        int size = 2 + 2 + 2 + 4 + header.length + data.length + 2;
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.ioBuffer(size);
+        buf.writeShort(const1);
+        buf.writeShort(opcode);
+        buf.writeShort(header.length);
+        buf.writeInt(data.length);
+        buf.writeBytes(header);
+        buf.writeBytes(data);
+        buf.writeShort(const2);
+        return buf;
     }
 }
