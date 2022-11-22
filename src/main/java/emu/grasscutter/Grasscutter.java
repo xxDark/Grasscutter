@@ -29,6 +29,7 @@ import emu.grasscutter.utils.JsonUtils;
 import emu.grasscutter.utils.Language;
 import emu.grasscutter.utils.StartupArguments;
 import emu.grasscutter.utils.Utils;
+import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
 import lombok.Setter;
 import org.jline.reader.EndOfFileException;
@@ -100,6 +101,9 @@ public final class Grasscutter {
 
         // Create command map.
         commandMap = new CommandMap(true);
+
+        // Disable resource leak detection.
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
 
         // Initialize server.
         Grasscutter.getLogger().info(translate("messages.status.starting"));
