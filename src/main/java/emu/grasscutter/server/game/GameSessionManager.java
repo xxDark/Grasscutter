@@ -75,6 +75,8 @@ public class GameSessionManager {
                 logicThread.execute(() -> {
                     try {
                         conversation.handleReceive(copy);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     } finally {
                         copy.release();
                     }
