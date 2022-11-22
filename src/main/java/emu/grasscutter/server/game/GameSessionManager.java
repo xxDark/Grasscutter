@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import emu.grasscutter.Grasscutter;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.DefaultEventLoop;
 import kcp.highway.KcpListener;
@@ -43,14 +43,18 @@ public class GameSessionManager {
 
                 @Override
                 public void writeData(byte[] bytes) {
-                    ByteBuf buf = Unpooled.wrappedBuffer(bytes);
-                    ukcp.write(buf);
-                    buf.release();
+                    writeData(Unpooled.wrappedBuffer(bytes));
                 }
 
                 @Override
                 public void writeData(ByteBuf buf) {
-                    ukcp.write(buf);
+                    if (!ukcp.isActive()) {
+                        // TODO: this needs to be fixed in ukcp,
+                        // there is a possible memory leak
+                        buf.release();
+                    } else {
+                        ukcp.write(buf);
+                    }
                 }
 
                 @Override
@@ -70,7 +74,7 @@ public class GameSessionManager {
         public void handleReceive(ByteBuf buf, Ukcp kcp) {
             GameSession conversation = sessions.get(kcp);
             if (conversation != null) {
-                ByteBuf copy = PooledByteBufAllocator.DEFAULT.heapBuffer(buf.readableBytes());
+                ByteBuf copy = ByteBufAllocator.DEFAULT.heapBuffer(buf.readableBytes());
                 buf.getBytes(0, copy);
                 logicThread.execute(() -> {
                     try {

@@ -1,13 +1,10 @@
 package emu.grasscutter.net.packet;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import com.google.protobuf.GeneratedMessageV3;
 import emu.grasscutter.net.proto.PacketHeadOuterClass.PacketHead;
 import emu.grasscutter.utils.Crypto;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.ByteBufAllocator;
 
 public class BasePacket {
     private static final byte[] EMPTY_BYTES = new byte[0];
@@ -101,7 +98,7 @@ public class BasePacket {
             this.data = data = EMPTY_BYTES;
         }
         int size = 2 + 2 + 2 + 4 + header.length + data.length + 2;
-        ByteBuf buf = PooledByteBufAllocator.DEFAULT.ioBuffer(size);
+        ByteBuf buf = ByteBufAllocator.DEFAULT.ioBuffer(size);
         buf.writeShort(const1);
         buf.writeShort(opcode);
         buf.writeShort(header.length);
@@ -109,6 +106,11 @@ public class BasePacket {
         buf.writeBytes(header);
         buf.writeBytes(data);
         buf.writeShort(const2);
+
+        if (this.shouldEncrypt) {
+            Crypto.xor(buf, this.useDispatchKey() ? Crypto.DISPATCH_KEY : Crypto.ENCRYPT_KEY);
+        }
+
         return buf;
     }
 }
